@@ -1,0 +1,122 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Raspberry Pi Nexus Cleaning Controller - Installation Guide</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: auto; line-height: 1.6; padding: 20px; }
+    code { background: #eee; padding: 2px 4px; border-radius: 4px; }
+    pre { background: #f4f4f4; padding: 10px; border-left: 4px solid #ccc; overflow-x: auto; }
+    h1, h2 { color: #2c3e50; }
+  </style>
+</head>
+<body>
+  <h1>Raspberry Pi Nexus Cleaning Controller</h1>
+  <p>This project replaces the Evolution Aqua Nexus Automatic Cleaning System using a Raspberry Pi and a 4-Relay HAT.</p>
+
+  <h2>📦 Features</h2>
+  <ul>
+    <li>Relay control for pump, inlet, waste valve, and air valves</li>
+    <li>Web-based UI with configurable cleaning steps</li>
+    <li>Authentication and Home Assistant integration</li>
+  </ul>
+
+  <h2>🛠️ Requirements</h2>
+  <ul>
+    <li>Raspberry Pi (with RPi.GPIO support)</li>
+    <li>4-Relay HAT connected to GPIO pins</li>
+    <li>Python 3.9+</li>
+    <li>Node.js + npm (for frontend)</li>
+  </ul>
+
+  <h2>🚀 Setup Instructions</h2>
+
+  <h3>1. Backend (FastAPI)</h3>
+  <pre><code>
+sudo apt update
+sudo apt install python3-pip
+cd nexus-controller/backend
+pip install fastapi uvicorn python-jose
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+  </code></pre>
+
+  <h3>2. Frontend (React)</h3>
+  <pre><code>
+cd ../frontend
+npm install
+npm run dev
+  </code></pre>
+
+  <h3>3. Default Credentials</h3>
+  <ul>
+    <li>Username: <code>admin</code></li>
+    <li>Password: <code>admin</code></li>
+  </ul>
+
+  <h2>🔧 Relay Configuration</h2>
+  <p>GPIO pin mappings:</p>
+  <ul>
+    <li><b>Relay 0</b>: Pump (GPIO 17)</li>
+    <li><b>Relay 1</b>: Inlet Valve (GPIO 18)</li>
+    <li><b>Relay 2</b>: Air Direction Valve (GPIO 27)</li>
+    <li><b>Relay 3</b>: Waste Valve (GPIO 22)</li>
+  </ul>
+
+  <h2>📡 Home Assistant</h2>
+  <p>MQTT integration planned in future release. Webhooks or command line sensors can be used for now.</p>
+
+  <h2>📁 Configuration</h2>
+  <p>To adjust timing or relay states, modify the <code>config.json</code> file or use the web UI directly.</p>
+
+  <h2>🔒 Authentication</h2>
+  <p>Basic token-based login with hardcoded admin user. Extendable for multi-user systems.</p>
+
+  <h2>🧪 Testing Without Hardware</h2>
+  <p>If running on a non-RPi system, GPIO commands are simulated via print statements.</p>
+
+  <hr>
+  <p>© 2025 - Open Source Nexus Cleaner</p>
+
+  <h2>🔁 Run on Boot with systemd</h2>
+  <p>You can set up the backend API to start automatically on boot using <code>systemd</code>:</p>
+
+  <h3>1. Create systemd service file</h3>
+  <pre><code>
+sudo nano /etc/systemd/system/nexus-backend.service
+  </code></pre>
+
+  <p>Paste this into the file (adjust paths as needed):</p>
+  <pre><code>
+[Unit]
+Description=Nexus Cleaning Backend
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python3 /home/pi/nexus-controller/backend/main.py
+WorkingDirectory=/home/pi/nexus-controller/backend
+Restart=always
+User=pi
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
+  </code></pre>
+
+  <h3>2. Enable and start the service</h3>
+  <pre><code>
+sudo systemctl daemon-reexec
+sudo systemctl daemon-reload
+sudo systemctl enable nexus-backend
+sudo systemctl start nexus-backend
+  </code></pre>
+
+  <h3>3. Check logs</h3>
+  <pre><code>
+journalctl -u nexus-backend -f
+  </code></pre>
+
+  <p>This will ensure the FastAPI server runs on boot. For production, you may want to use <code>gunicorn</code> or a reverse proxy.</p>
+
+</body>
+</html>

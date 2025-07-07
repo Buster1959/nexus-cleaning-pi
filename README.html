@@ -1,0 +1,32 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Nexus Controller Setup Guide</title>
+</head>
+<body>
+  <h1>Raspberry Pi Nexus Controller Setup</h1>
+  <h2>Hardware</h2>
+  <ul>
+    <li>Raspberry Pi 3/4</li>
+    <li>4-Relay HAT</li>
+    <li>Wired to your Nexus valves/pumps</li>
+  </ul>
+  <h2>Installation</h2>
+  <pre>
+  sudo apt update
+  sudo apt install python3-pip mosquitto
+  pip3 install -r backend/requirements.txt
+  cd backend
+  uvicorn main:app --host 0.0.0.0 --port 8000
+  </pre>
+  <h2>Home Assistant Integration</h2>
+  <p>Use MQTT sensors and commands to integrate with topics:</p>
+  <ul>
+    <li><code>nexus/status</code></li>
+    <li><code>nexus/control</code> → send <code>start</code> or <code>cancel</code></li>
+  </ul>
+</body>
+</html>
+    

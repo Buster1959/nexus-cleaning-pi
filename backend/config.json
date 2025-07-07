@@ -1,0 +1,77 @@
+{
+  "steps": [
+    {
+      "name": "Pump Off",
+      "actions": [
+        {
+          "relay": 0,
+          "state": "off"
+        }
+      ],
+      "duration": 0
+    },
+    {
+      "name": "Wait to Equalize Water",
+      "actions": [],
+      "duration": 120
+    },
+    {
+      "name": "Close Inlet Valve and Divert Air to Eazy",
+      "actions": [
+        {
+          "relay": 1,
+          "state": "off"
+        },
+        {
+          "relay": 2,
+          "state": "on"
+        }
+      ],
+      "duration": 300
+    },
+    {
+      "name": "Open Waste Valve",
+      "actions": [
+        {
+          "relay": 3,
+          "state": "on"
+        }
+      ],
+      "duration": 180
+    },
+    {
+      "name": "Flush Eazy (Inlet Open)",
+      "actions": [
+        {
+          "relay": 1,
+          "state": "on"
+        }
+      ],
+      "duration": 120
+    },
+    {
+      "name": "Close Waste Valve and Restore Air to Bio",
+      "actions": [
+        {
+          "relay": 3,
+          "state": "off"
+        },
+        {
+          "relay": 2,
+          "state": "off"
+        }
+      ],
+      "duration": 0
+    },
+    {
+      "name": "Pump On",
+      "actions": [
+        {
+          "relay": 0,
+          "state": "on"
+        }
+      ],
+      "duration": 0
+    }
+  ]
+}
