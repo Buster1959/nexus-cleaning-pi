@@ -1,10 +1,10 @@
-
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Body
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
 from jose import JWTError, jwt
+from schedule_manager import should_run_job, update_last_run
 import time
 import json
 import asyncio
@@ -28,6 +28,8 @@ SECRET_KEY = "secret-key"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 RELAY_PINS = [17, 18, 27, 22]
+
+CONFIG_FILE = "config.json"
 
 app = FastAPI()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
@@ -55,6 +57,7 @@ class Step(BaseModel):
     actions: List[Action]
     duration: int
 
+# You may want to update Settings to match the full config structure or remove it if not used
 class Settings(BaseModel):
     steps: List[Step]
 
@@ -62,7 +65,6 @@ class Status(BaseModel):
     running: bool
     step: Optional[str]
 
-CONFIG_FILE = "config.json"
 USER = {"username": "admin", "password": "admin"}
 status = {"running": False, "step": None}
 cleaning_task = None
@@ -71,7 +73,13 @@ def load_config():
     if os.path.exists(CONFIG_FILE):
         with open(CONFIG_FILE) as f:
             return json.load(f)
-    return {"steps": []}
+    # default config structure
+    return {
+        "steps": [],
+        "schedule": {},
+        "trigger_mode": "internal",
+        "last_run": None
+    }
 
 def save_config(config):
     with open(CONFIG_FILE, "w") as f:
@@ -86,8 +94,9 @@ def create_access_token(data: dict):
 async def cleaning_process():
     global status
     config = load_config()
+    steps = config.get("steps", [])
     status["running"] = True
-    for step in config["steps"]:
+    for step in steps:
         status["step"] = step["name"]
         for action in step.get("actions", []):
             pin = RELAY_PINS[action["relay"]]
@@ -108,20 +117,37 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
 async def get_status():
     return status
 
-@app.get("/settings", response_model=Settings)
+@app.get("/settings")
 async def get_settings(token: str = Depends(oauth2_scheme)):
     return load_config()
 
 @app.post("/settings")
-async def set_settings(new_config: Settings, token: str = Depends(oauth2_scheme)):
-    save_config(new_config.dict())
+async def set_settings(new_config: dict = Body(...), token: str = Depends(oauth2_scheme)):
+    save_config(new_config)
     return {"ok": True}
 
 @app.post("/run")
 async def start_cleaning(token: str = Depends(oauth2_scheme)):
+    config = load_config()
+    mode = config.get("trigger_mode", "internal")
+    if mode not in ["internal", "both"]:
+        raise HTTPException(status_code=403, detail="Manual run not allowed in this trigger mode")
     global cleaning_task
     if not status["running"]:
         cleaning_task = asyncio.create_task(cleaning_process())
+        update_last_run()
+    return {"ok": True}
+
+@app.post("/api/run-job")
+async def api_run_job(token: str = Depends(oauth2_scheme)):
+    config = load_config()
+    mode = config.get("trigger_mode", "internal")
+    if mode not in ["api", "both"]:
+        raise HTTPException(status_code=403, detail="Not in API mode")
+    global cleaning_task
+    if not status["running"]:
+        cleaning_task = asyncio.create_task(cleaning_process())
+        update_last_run()
     return {"ok": True}
 
 @app.post("/cancel")
@@ -132,3 +158,18 @@ async def cancel_cleaning(token: str = Depends(oauth2_scheme)):
     status["running"] = False
     status["step"] = None
     return {"ok": True}
+
+@app.on_event("startup")
+async def schedule_background_task():
+    asyncio.create_task(schedule_loop())
+
+async def schedule_loop():
+    while True:
+        await asyncio.sleep(60)  # Check every 60 seconds
+        config = load_config()
+        mode = config.get("trigger_mode", "internal")
+        if mode in ["internal", "both"]:
+            if should_run_job() and not status["running"]:
+                global cleaning_task
+                cleaning_task = asyncio.create_task(cleaning_process())
+                update_last_run()
