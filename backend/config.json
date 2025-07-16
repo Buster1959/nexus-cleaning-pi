@@ -70,8 +70,11 @@
           "relay": 0,
           "state": "on"
         }
-      ],
-      "duration": 0
-    }
-  ]
+  ],
+  "schedule": {
+    "days_of_week": ["Monday", "Wednesday"],
+    "every_x_days": 3
+  },
+  "trigger_mode": "internal", // or "api" or "both"
+  "last_run": "2025-07-15T12:00:00"
 }
